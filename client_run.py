@@ -2,7 +2,7 @@ import os
 import socket
 import subprocess
 import tkinter as tk
-from tkinter import scrolledtext, simpledialog, messagebox
+from tkinter import scrolledtext, simpledialog, messagebox, ttk
 from threading import Thread
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
@@ -14,6 +14,7 @@ import time
 
 BROADCAST_PORT = 5555
 BUFFER_SIZE = 1024
+THEME_FILE = "theme_settings.json"  # File to store theme settings
 
 # Helper function to get the local IP address
 def get_local_ip():
@@ -141,6 +142,18 @@ def start_update_checker():
     else:
         print("No update script found.")
 
+# Load theme settings from JSON file
+def load_theme_settings():
+    if os.path.exists(THEME_FILE):
+        with open(THEME_FILE, 'r') as f:
+            return json.load(f)
+    return {"theme": "light"}  # Default theme
+
+# Save theme settings to JSON file
+def save_theme_settings(theme):
+    with open(THEME_FILE, 'w') as f:
+        json.dump({"theme": theme}, f)
+
 # Main messaging app class
 class MessagingApp:
     def __init__(self, username):
@@ -148,6 +161,7 @@ class MessagingApp:
         self.private_key, self.public_key = generate_rsa_key_pair()
         self.contacts = {}  # Stores session keys for each contact
         self.known_users = {}  # Discovered users on LAN
+        self.theme = load_theme_settings()["theme"]  # Load theme setting
         self.init_gui()
         self.start_broadcast_listener()
 
@@ -156,6 +170,7 @@ class MessagingApp:
         self.root = tk.Tk()
         self.root.title(f"Messaging App - {self.username}")
 
+        # Initialize the chat window first
         self.chat_window = scrolledtext.ScrolledText(self.root, width=50, height=20)
         self.chat_window.pack(padx=10, pady=10)
         self.chat_window.config(state=tk.DISABLED)
@@ -165,6 +180,13 @@ class MessagingApp:
 
         self.send_button = tk.Button(self.root, text="Send", command=self.send_message)
         self.send_button.pack(side=tk.RIGHT, padx=10, pady=10)
+
+        # Dark/Light mode toggle
+        self.toggle_button = tk.Button(self.root, text="Toggle Dark/Light Mode", command=self.toggle_theme)
+        self.toggle_button.pack(pady=10)
+
+        # Set the theme based on the stored setting after initializing all GUI components
+        self.update_theme()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -202,37 +224,38 @@ class MessagingApp:
             self.entry.delete(0, tk.END)
 
             if recipient in self.known_users:
-                # Send message over LAN (LAN IP is already known)
-                recipient_ip = self.known_users[recipient]
-                aes_key, _ = self.get_session_key(recipient)
+                # Send message over LAN (LAN message)
+                aes_key, encrypted_aes_key = self.get_session_key(recipient)
                 encrypted_message = encrypt_message_aes(aes_key, message)
-                send_lan_message(recipient_ip, self.username, encrypted_message)
+                send_lan_message(self.known_users[recipient], self.username, encrypted_message)
+                self.add_message(f"You to {recipient}: {message}")
             else:
-                self.add_message("User not found on the LAN.")
+                messagebox.showwarning("Warning", f"{recipient} not found in known users.")
 
-    # Export user's public key as PEM format
-    def export_public_key(self):
-        return base64.b64encode(self.public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )).decode()
+    # Toggle theme between light and dark
+    def toggle_theme(self):
+        self.theme = "dark" if self.theme == "light" else "light"
+        save_theme_settings(self.theme)
+        self.update_theme()
 
-    def run(self):
-        start_update_checker()
-        self.root.mainloop()
+    # Update GUI theme
+    def update_theme(self):
+        if self.theme == "dark":
+            self.root.config(bg="black")
+            self.chat_window.config(bg="gray", fg="white")
+            self.entry.config(bg="darkgray", fg="white")
+            self.send_button.config(bg="gray", fg="white")
+            self.toggle_button.config(bg="gray", fg="white")
+        else:
+            self.root.config(bg="white")
+            self.chat_window.config(bg="white", fg="black")
+            self.entry.config(bg="white", fg="black")
+            self.send_button.config(bg="lightgray", fg="black")
+            self.toggle_button.config(bg="lightgray", fg="black")
 
-# Main function
-def main():
-    local_ip = get_local_ip()
-    print(f"Local IP: {local_ip}")
-
-    username = simpledialog.askstring("Login", "Enter your username:")
-    if not username:
-        messagebox.showerror("Error", "Username cannot be empty!")
-        return
-
-    app = MessagingApp(username)
-    app.run()
-
+# Run the app
 if __name__ == "__main__":
-    main()
+    username = simpledialog.askstring("Username", "Enter your username:")
+    if username:
+        app = MessagingApp(username)
+        app.root.mainloop()
