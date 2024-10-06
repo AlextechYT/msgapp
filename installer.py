@@ -18,7 +18,7 @@ def download_file(url, save_path):
     except Exception as e:
         show_error(f"Failed to download {url}: {str(e)}")
 
-def install_files(install_directory, file_type, icon_path):
+def install_files(install_directory, file_type, icon_path, create_shortcut_flag):
     install_path = Path(install_directory)
     install_path.mkdir(parents=True, exist_ok=True)
 
@@ -34,11 +34,22 @@ def install_files(install_directory, file_type, icon_path):
         download_file(file_url, install_path / file_name)
         print(f"{file_name} downloaded successfully!")
 
-    # Create a desktop shortcut only for client_run
-    shortcut_target = install_path / ("client_run.exe" if file_type == 'exe' else "client_run.py")
-    create_shortcut(shortcut_target, icon_path)
+    # Write the selected theme to a file
+    write_theme_to_file(install_path)
+
+    # Create a desktop shortcut only for client_run if the flag is set
+    if create_shortcut_flag:
+        shortcut_target = install_path / ("client_run.exe" if file_type == 'exe' else "client_run.py")
+        create_shortcut(shortcut_target, icon_path)
 
     messagebox.showinfo("Success", "Installation completed successfully!")
+
+def write_theme_to_file(install_path):
+    theme = "dark" if var_dark_mode.get() else "light"
+    theme_file_path = install_path / "theme.txt"
+    with open(theme_file_path, 'w') as theme_file:
+        theme_file.write(theme)
+    print(f"Theme '{theme}' written to {theme_file_path}")
 
 def create_shortcut(target, icon_path):
     desktop = Path(os.path.join(os.path.join(os.environ["USERPROFILE"]), "Desktop"))
@@ -84,6 +95,7 @@ def on_install():
     install_directory = entry_directory.get()
     file_type = var_file_type.get()
     icon_path = entry_icon.get()
+    create_shortcut_flag = var_create_shortcut.get()  # Get the value of the checkbox
 
     if not install_directory:
         show_error("Please select an installation directory.")
@@ -92,11 +104,42 @@ def on_install():
         show_error("Installation directory does not exist.")
         return
 
-    install_files(install_directory, file_type, icon_path)
+    install_files(install_directory, file_type, icon_path, create_shortcut_flag)
+
+def toggle_theme():
+    if var_dark_mode.get():
+        root.config(bg="black")
+        label_directory.config(bg="black", fg="white")
+        label_file_type.config(bg="black", fg="white")
+        label_icon.config(bg="black", fg="white")
+        for widget in frame_directory.winfo_children():
+            widget.config(bg="black", fg="white")
+        for widget in frame_file_type.winfo_children():
+            widget.config(bg="black", fg="white")
+        for widget in frame_icon.winfo_children():
+            widget.config(bg="black", fg="white")
+        button_install.config(bg="gray", fg="white")
+    else:
+        root.config(bg="white")
+        label_directory.config(bg="white", fg="black")
+        label_file_type.config(bg="white", fg="black")
+        label_icon.config(bg="white", fg="black")
+        for widget in frame_directory.winfo_children():
+            widget.config(bg="white", fg="black")
+        for widget in frame_file_type.winfo_children():
+            widget.config(bg="white", fg="black")
+        for widget in frame_icon.winfo_children():
+            widget.config(bg="white", fg="black")
+        button_install.config(bg="lightgray", fg="black")
 
 # Create the GUI
 root = tk.Tk()
 root.title("MsgApp Installer")
+
+# Dark mode toggle
+var_dark_mode = tk.BooleanVar(value=False)  # Default to light mode
+checkbox_dark_mode = tk.Checkbutton(root, text="Enable Dark Mode", variable=var_dark_mode, command=toggle_theme)
+checkbox_dark_mode.pack(pady=10)
 
 # Installation directory
 frame_directory = tk.Frame(root)
@@ -138,6 +181,11 @@ entry_icon.pack(side=tk.LEFT)
 
 button_icon_browse = tk.Button(frame_icon, text="Browse", command=browse_icon)
 button_icon_browse.pack(side=tk.LEFT)
+
+# Create shortcut option
+var_create_shortcut = tk.BooleanVar(value=True)  # Default to creating shortcut
+checkbox_create_shortcut = tk.Checkbutton(root, text="Create Desktop Shortcut", variable=var_create_shortcut)
+checkbox_create_shortcut.pack(pady=10)
 
 # Install button
 button_install = tk.Button(root, text="Install", command=on_install)
