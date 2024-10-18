@@ -123,7 +123,7 @@ def install_wine():
     try:
         # Use subprocess to run the Wine installation command (assuming Ubuntu/Debian)
         subprocess.run(["sudo", "apt", "update"], check=True)
-        subprocess.run(["sudo", "apt", "install", "-y", "wine"], check=True)
+        subprocess.run(["sudo", "apt-get", "install", "-y", "wine"], check=True)
         messagebox.showinfo("Wine Installation", "Wine has been successfully installed.")
     except Exception as e:
         show_error(f"Failed to install Wine: {str(e)}")
