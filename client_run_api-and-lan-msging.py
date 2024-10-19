@@ -178,6 +178,12 @@ class MessagingApp:
         if username and password:
             if register_user(username, password):
                 messagebox.showinfo("Success", "Registration successful!")
+                # Automatically get the public key after successful registration
+                public_key = get_public_key(username)
+                if public_key:
+                    messagebox.showinfo("Public Key", f"Your public key: {public_key}")
+                else:
+                    messagebox.showerror("Error", "Failed to retrieve public key.")
             else:
                 messagebox.showerror("Error", "Registration failed. Username might be taken.")
 
