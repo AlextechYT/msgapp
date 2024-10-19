@@ -77,6 +77,12 @@ def receive_messages(username):
     response = requests.get(url)
     return response.json() if response.status_code == 200 else None
 
+# Broadcast a message to all users
+def broadcast_message():
+    url = f"{API_BASE_URL}/user/broadcast"
+    response = requests.get(url)
+    return response.status_code == 200  # True if broadcast was successful
+
 # Update user settings
 def update_user_settings(username, theme):
     url = f"{API_BASE_URL}/user/settings"
@@ -132,6 +138,12 @@ class MessagingApp:
         self.send_button = tk.Button(self.root, text="Send", command=self.send_message)
         self.send_button.pack(side=tk.RIGHT, padx=10, pady=10)
 
+        self.register_button = tk.Button(self.root, text="Register", command=self.register)
+        self.register_button.pack(side=tk.LEFT, padx=10, pady=10)
+
+        self.settings_button = tk.Button(self.root, text="Update Settings", command=self.update_settings)
+        self.settings_button.pack(side=tk.RIGHT, padx=10, pady=10)
+
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def on_closing(self):
@@ -159,6 +171,24 @@ class MessagingApp:
                     self.add_message(f"You to {recipient} (API): {message}")
                 else:
                     messagebox.showerror("Error", "Failed to send message via API.")
+
+    def register(self):
+        username = simpledialog.askstring("Register", "Enter a username:")
+        password = simpledialog.askstring("Register", "Enter a password:", show='*')
+        if username and password:
+            if register_user(username, password):
+                messagebox.showinfo("Success", "Registration successful!")
+            else:
+                messagebox.showerror("Error", "Registration failed. Username might be taken.")
+
+    def update_settings(self):
+        theme = simpledialog.askstring("Update Settings", "Enter new theme:")
+        if theme:
+            if update_user_settings(self.username, theme):
+                messagebox.showinfo("Success", "Settings updated successfully!")
+                save_theme_settings(theme)  # Save the new theme
+            else:
+                messagebox.showerror("Error", "Failed to update settings.")
 
     # Add a message to the chat window
     def add_message(self, message):
